@@ -1,0 +1,120 @@
+---
+title: "Lebron James Turnovers"
+author: '@jonmichaelstroh'
+date: "12/17/2021"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+On the NBA podcast The Lowe Post, an ESPN writer, I believe Dave McMenamin, said that LeBron's turnovers decrease as the season progresses: prior to LBJ's 37th b-day.
+
+```{r load libraries, include = FALSE}
+library(tidyverse)
+library(dplyr)
+library(readxl)
+```
+
+Our data is a complete game log for LeBron to 12/25/21: right before his 37th birthday.
+```{r, include = FALSE}
+james_log <- read_excel("LeBron James Game Logs.xlsx")
+```
+
+```{r}
+james_log <- james_log %>% drop_na(G)
+james_log <- james_log %>% mutate(Season = as.factor(Season)) %>% mutate(G = as.numeric(G)) %>% mutate(`3P` = as.numeric(`3P`)) %>% mutate(`3PA` = as.numeric(`3PA`)) %>% mutate(`3P%` = as.numeric(`3P%`)) %>% mutate(TOV = as.numeric(TOV))
+```
+
+```{r remove outlier games < 20 minutes}
+james_log <- james_log %>% filter(MP >= 20)
+```
+
+Distribution of regular season minutes per game over time.  Kinda neat.  Clearly, James was worked quite hard early in his career and has seen his minute load decrease with age:
+
+```{r Regular Season Minutes per game over time}
+ggplot(data = james_log, aes(x = Date, y = MP)) + geom_point(aes(color = Season)) + theme(legend.position = "none", plot.background = element_rect(fill = '#ECECEC'), panel.background = element_rect(fill = "#BFD5E3", colour = "white", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"), axis.title.x =element_blank(), axis.title.y = element_text(color="black", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank()) + ylab("Minutes")
+```
+
+```{r The total career points growth}
+james_log <- james_log %>% mutate(careerpoints = cumsum(PTS)) %>% mutate(careergames = cumsum(G)) %>% mutate(careerassists = cumsum(AST)) %>% mutate(careerrebounds = cumsum(TRB))%>% mutate(careergames = 1:n())
+```
+
+```{r The growth of career points}
+ggplot(data = james_log, aes(x= careergames)) + geom_area(aes(y = careerpoints), color = 'red', fill = 'light pink') + geom_area(aes(y = careerrebounds), color = 'blue', fill = 'light blue') + geom_area(aes(y = careerassists), color = 'green', fill = 'light green') + theme(plot.background = element_rect(fill = '#ECECEC'), panel.background = element_rect(fill = "#BFD5E3", colour = "white", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"), axis.title.x =element_blank(), axis.title.y = element_text(color="black", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank()) + ylab("Career Counting Stats")
+```
+
+Red is clearly points, blue is rebounds, and green is assists.  Absolutely wild how close LBJ's assist and rebound career totals have stayed throughout his career.
+
+```{r}
+ggplot(data = james_log, aes(x= careergames)) + geom_line(aes(y = careerrebounds), color = 'blue') + geom_line(aes(y = careerassists), color = 'green') + theme(plot.background = element_rect(fill = '#ECECEC'), panel.background = element_rect(fill = "#BFD5E3", colour = "white", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"), axis.title.x =element_blank(), axis.title.y = element_text(color="black", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank()) + ylab("Career Counting Stats")
+```
+
+```{r}
+james_log_same <- james_log %>% filter(careerassists == careerrebounds)
+```
+
+The last time LeBron had the same career assists and rebounds was the 2006 season when both were 1464.  Rebounds have held the edge throughout most of his career.  However, after LBJ's league leading 10.2 assist 2019-20 season,things are getting a bit tighter.  We need the lines to intersect!!
+
+Now the main course -- do LBJ's turnovers decrease as the season progresses:
+
+```{r}
+james_log_over30 <- james_log %>% filter(MP >= 30)
+```
+
+Hmmm maybe they do slightly...
+
+```{r}
+ggplot(data = james_log, aes(x= G, y = TOV/MP * 36)) + geom_point(color = '#552583') + geom_smooth(method = 'lm', color = 'light blue', se = FALSE, size = 2) + theme(legend.position = "none", plot.background = element_rect(fill = '#ECECEC'), panel.background = element_rect(fill = "#FFF08D", colour = "light blue", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "light blue"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "light blue"), axis.title.x =element_text(color="black", size=12, family = 'serif'), axis.title.y = element_text(color="black", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank(), plot.title = element_text(color="black", size=13, family = 'serif', hjust = 0.5)) + ylab("Turnovers per 36 Minutes")   + xlab('Game Number within a Season') + ggtitle('Do LeBron\'s Turnovers Decrease as the Season Progresses?')
+```
+
+```{r}
+james_log %>% summarise(mean(TOV/MP * 36))
+james_log_firstx <- james_log %>% filter(G >= 63)
+james_log_firstx %>% summarise(mean(TOV/MP * 36))
+```
+
+LBJ's career turnovers per 36 min is 3.34, after game 63 it is 3.15.
+
+```{r}
+tovsdecrease <-lm(data= james_log, TOV/MP*36 ~ G)
+summary(tovsdecrease)
+```
+
+P-value is .059 which is so barely above the traditional statistical significance threshold.
+
+### Proportion of different games by minutes
+```{r}
+james_log <- james_log %>% mutate(overx = if_else(MP >= 40, "40 plus", if_else(MP >= 30, "30s", if_else(MP >= 20, '20s', 'Less than 20'))))
+
+james_log$overx <- factor(james_log$overx, ordered = TRUE, levels = c('Less than 20', '20s', '30s', '40 plus'))
+```
+
+Yeah, just some fun graphs --> this dude has played a ton of high minute games:
+
+```{r}
+ggplot(data = james_log, aes(x= overx)) + geom_bar(color = "#993333", fill = "#993333")+ theme(legend.position = "none", plot.background = element_rect(fill = '#FDBB30'), panel.background = element_rect(fill = "#FDBB30", colour = "#FDBB30", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#041E42"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "#041E42"), axis.title.x =element_text(color="#860038", size=12, family = 'serif'), axis.title.y = element_text(color="#860038", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank(), plot.title = element_text(color="#860038", size=13, family = 'serif', hjust = 0.5), axis.text.x = element_text(face="bold", color="#993333"), axis.text.y = element_text(face="bold", color="#993333")) + ylab("Total Games")   + xlab('Minutes Played Per Game') + ggtitle('Distribution of LBJ\'S Regular Season Minutes')
+```
+
+```{r Count different games}
+my_summary_data <- james_log %>%
+    group_by(overx) %>%
+    summarise(Count = n())   
+```
+
+
+```{r}
+ggplot(data = james_log, aes(x= MP)) + geom_density(fill = "#98002E", color = "#98002E" )+ theme(legend.position = "none", plot.background = element_rect(fill = '#F9A01B'), panel.background = element_rect(fill = "#F9A01B", colour = "#F9A01B", size = 2, linetype = "solid"), panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#041E42"), panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "#041E42"), axis.title.x =element_text(color="black", size=12, family = 'serif'), axis.title.y = element_text(color="black", size=12, family = 'serif'), axis.ticks.x=element_blank(), axis.ticks.y=element_blank(), plot.title = element_text(color="black", size=13, family = 'serif', hjust = 0.5), axis.text.x = element_text(face="bold", color="black"), axis.text.y = element_blank()) + ylab("Total Games")  + xlab('Regular Season Game Minutes') + ggtitle('LeBron\'s Mountain of Minutes!')
+```
+
+
+
+
+
+
+
+
+
